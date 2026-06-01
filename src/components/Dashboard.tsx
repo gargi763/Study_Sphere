@@ -7,6 +7,7 @@ import AttendanceManagement from './dashboard/AttendanceManagement';
 import AssignmentManagement from './dashboard/AssignmentManagement';
 import ExpenseManagement from './dashboard/ExpenseManagement';
 import AIRecommendations from './dashboard/AIRecommendations';
+import StudentAnalytics from './dashboard/StudentAnalytics';
 import AssignmentsCard from './dashboard/AssignmentsCard';
 import NotificationsCard from './dashboard/NotificationsCard';
 import ExpenseCard from './dashboard/ExpenseCard';
@@ -20,6 +21,7 @@ interface DashboardProps {
 
 const sectionTitles: Record<string, string> = {
   overview: 'Overview',
+  'student-analytics': 'Student Analytics',
   'ai-recommendations': 'AI Insights',
   'attendance-mgmt': 'Attendance Management',
   'assignment-mgmt': 'Assignment Management',
@@ -35,6 +37,7 @@ const sectionTitles: Record<string, string> = {
 function SectionContent({ section }: { section: string }) {
   switch (section) {
     case 'overview': return <OverviewSection />;
+    case 'student-analytics': return <StudentAnalytics />;
     case 'ai-recommendations': return <AIRecommendations />;
     case 'attendance-mgmt': return <AttendanceManagement />;
     case 'assignment-mgmt': return <AssignmentManagement />;

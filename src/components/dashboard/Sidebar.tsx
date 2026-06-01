@@ -12,6 +12,7 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
+  { id: 'student-analytics', icon: BarChart2, label: 'Analytics' },
   { id: 'ai-recommendations', icon: Brain, label: 'AI Insights' },
   { id: 'attendance-mgmt', icon: GraduationCap, label: 'Attendance Mgmt' },
   { id: 'assignment-mgmt', icon: FileText, label: 'Assignments Mgmt' },
@@ -20,7 +21,6 @@ const navItems = [
   { id: 'assignments', icon: ClipboardList, label: 'Assignments' },
   { id: 'planner', icon: Calendar, label: 'Study Planner' },
   { id: 'expenses', icon: Wallet, label: 'Expenses' },
-  { id: 'analytics', icon: BarChart2, label: 'Analytics' },
   { id: 'notifications', icon: Bell, label: 'Notifications' },
 ];
 
