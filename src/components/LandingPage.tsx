@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BookOpen, Brain, BarChart2, Calendar, Bell, Zap, ChevronRight, Star, Users, Award, ArrowRight, Menu, X, Lightbulb, Target, Smartphone, TrendingUp, Heart, Globe, CheckCircle2, Sparkles, Code } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import SmartCampusIntegration from './dashboard/SmartCampusIntegration';
+import Footer from './Footer';
 
 interface LandingPageProps {
   onNavigate: (page: 'landing' | 'login' | 'dashboard') => void;
@@ -319,15 +320,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
         </div>
       </section>
 
-      <footer className="py-8 px-6 border-t transition-theme border-slate-300/20 dark:border-white/5">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"><BookOpen size={14} className="text-white" /></div>
-            <span className="text-slate-900 dark:text-white font-semibold transition-colors">StudySphere</span>
-          </div>
-          <p className="text-slate-600 dark:text-blue-300/30 text-sm transition-colors">2026 StudySphere. Built for students, by students.</p>
-        </div>
-      </footer>
+      <Footer />
 
       <style>{`
         html {

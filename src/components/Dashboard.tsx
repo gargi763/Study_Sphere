@@ -13,6 +13,7 @@ import NotificationsCard from './dashboard/NotificationsCard';
 import ExpenseCard from './dashboard/ExpenseCard';
 import StudyPlanner from './dashboard/StudyPlanner';
 import AnalyticsCard from './dashboard/AnalyticsCard';
+import Footer from './Footer';
 import { notifications } from '../data/studentData';
 
 interface DashboardProps {
@@ -58,20 +59,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-mesh flex">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(prev => !prev)} onNavigate={onNavigate} unreadCount={unreadCount} />
-      <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-60'}`}>
-        <TopBar onSectionChange={setActiveSection} />
-        <div className="flex-1 overflow-auto">
-          <div className="p-8 md:p-10 lg:p-12">
-            <div className="flex items-center gap-2 mb-8">
-              <span className="text-blue-300/30 dark:text-blue-300/30 text-sm">Dashboard</span>
-              {activeSection !== 'overview' && (<><span className="text-blue-300/20 dark:text-blue-300/20 text-sm">/</span><span className="text-blue-300/60 dark:text-blue-300/60 text-sm font-medium">{sectionTitles[activeSection]}</span></>)}
+    <div className="min-h-screen bg-mesh flex flex-col">
+      <div className="flex flex-1">
+        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(prev => !prev)} onNavigate={onNavigate} unreadCount={unreadCount} />
+        <main className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-60'}`}>
+          <TopBar onSectionChange={setActiveSection} />
+          <div className="flex-1 overflow-auto">
+            <div className="p-8 md:p-10 lg:p-12">
+              <div className="flex items-center gap-2 mb-8">
+                <span className="text-blue-300/30 dark:text-blue-300/30 text-sm">Dashboard</span>
+                {activeSection !== 'overview' && (<><span className="text-blue-300/20 dark:text-blue-300/20 text-sm">/</span><span className="text-blue-300/60 dark:text-blue-300/60 text-sm font-medium">{sectionTitles[activeSection]}</span></>)}
+              </div>
+              <SectionContent section={activeSection} />
             </div>
-            <SectionContent section={activeSection} />
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
+      <Footer />
     </div>
   );
 }
