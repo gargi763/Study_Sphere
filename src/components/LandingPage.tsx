@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BookOpen, Brain, BarChart2, Calendar, Bell, Zap, ChevronRight, Star, Users, Award, ArrowRight, Menu, X, Lightbulb, Target, Smartphone, TrendingUp, Heart, Globe, CheckCircle2, Sparkles, Code } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import SmartCampusIntegration from './dashboard/SmartCampusIntegration';
 
 interface LandingPageProps {
   onNavigate: (page: 'landing' | 'login' | 'dashboard') => void;
@@ -301,6 +302,8 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
         </div>
       </section>
 
+      <SmartCampusIntegration />
+
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <div className="glass-card rounded-3xl p-12 border transition-theme border-slate-300/20 dark:border-blue-500/20 relative overflow-hidden">
@@ -380,6 +383,15 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           }
         }
 
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
         .animate-fade-in {
           animation: fadeIn 0.6s ease-out;
         }
@@ -391,6 +403,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
 
         .animate-float {
           animation: float 3s ease-in-out infinite;
+        }
+
+        .animate-spin-slow {
+          animation: spin-slow 3s linear infinite;
         }
 
         .text-gradient {
