@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Brain, BarChart2, Calendar, Bell, Zap, ChevronRight, Star, Users, Award, ArrowRight, Menu, X } from 'lucide-react';
+import { BookOpen, Brain, BarChart2, Calendar, Bell, Zap, ChevronRight, Star, Users, Award, ArrowRight, Menu, X, Lightbulb, Target, Smartphone, TrendingUp, Heart, Globe, CheckCircle2, Sparkles, Code } from 'lucide-react';
 
 interface LandingPageProps {
   onNavigate: (page: 'landing' | 'login' | 'dashboard') => void;
@@ -27,16 +27,39 @@ const testimonials = [
   { name: 'Sofia Chen', major: 'Pre-Med', text: 'The study planner keeps me on track even during the most intense exam periods. Highly recommend!', stars: 5 },
 ];
 
+const sdgGoals = [
+  { id: 4, title: 'Quality Education', subtitle: 'Ensure inclusive and equitable quality education', color: 'from-red-600 to-red-400', icon: BookOpen, description: 'Democratizing access to learning tools for all students worldwide' },
+  { id: 3, title: 'Good Health & Wellbeing', subtitle: 'Support mental health and work-life balance', color: 'from-green-600 to-green-400', icon: Heart, description: 'Promoting healthy study patterns and stress management' },
+  { id: 17, title: 'Partnerships for Goals', subtitle: 'Build partnerships to achieve SDGs', color: 'from-blue-600 to-blue-400', icon: Users, description: 'Collaborating with educational institutions globally' },
+];
+
+const benefits = [
+  { icon: Sparkles, title: 'Smart Organization', desc: 'AI-powered scheduling keeps you ahead' },
+  { icon: TrendingUp, title: 'Real-time Analytics', desc: 'Track progress with beautiful visualizations' },
+  { icon: Smartphone, title: 'Mobile Optimized', desc: 'Manage everything on any device' },
+  { icon: Globe, title: 'Global Community', desc: 'Connect with students worldwide' },
+  { icon: CheckCircle2, title: 'Task Management', desc: 'Never miss a deadline again' },
+  { icon: Code, title: 'Smart Integration', desc: 'Syncs with your digital life' },
+];
+
 export default function LandingPage({ onNavigate }: LandingPageProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [visibleStats, setVisibleStats] = useState(false);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     const timer = setTimeout(() => setVisibleStats(true), 800);
-    return () => { window.removeEventListener('scroll', handleScroll); clearTimeout(timer); };
+    const testimonialTimer = setInterval(() => {
+      setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(timer);
+      clearInterval(testimonialTimer);
+    };
   }, []);
 
   return (
@@ -56,7 +79,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-blue-100/70 hover:text-white transition-colors">Features</a>
-            <a href="#stats" className="text-sm text-blue-100/70 hover:text-white transition-colors">About</a>
+            <a href="#sdg" className="text-sm text-blue-100/70 hover:text-white transition-colors">Impact</a>
             <a href="#testimonials" className="text-sm text-blue-100/70 hover:text-white transition-colors">Reviews</a>
           </div>
           <div className="hidden md:flex items-center gap-3">
@@ -70,6 +93,8 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
         {mobileMenuOpen && (
           <div className="md:hidden glass-dark border-t border-white/10 px-6 py-4 flex flex-col gap-4">
             <a href="#features" className="text-blue-100/70 hover:text-white transition-colors text-sm" onClick={() => setMobileMenuOpen(false)}>Features</a>
+            <a href="#sdg" className="text-blue-100/70 hover:text-white transition-colors text-sm" onClick={() => setMobileMenuOpen(false)}>Impact</a>
+            <a href="#testimonials" className="text-blue-100/70 hover:text-white transition-colors text-sm" onClick={() => setMobileMenuOpen(false)}>Reviews</a>
             <button onClick={() => onNavigate('login')} className="text-sm text-blue-200 text-left">Sign In</button>
             <button onClick={() => onNavigate('login')} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-xl w-fit">Get Started</button>
           </div>
@@ -168,20 +193,102 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
         </div>
       </section>
 
+      <section id="sdg" className="py-20 px-6 relative">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-2 mb-6 text-xs text-blue-300 border border-blue-500/20">
+              <Globe size={12} className="text-green-400" />
+              <span>Sustainable Development Goals</span>
+            </div>
+            <h2 className="text-4xl font-bold text-white mb-4">Impact Beyond Academia</h2>
+            <p className="text-blue-200/50 text-lg max-w-2xl mx-auto">StudySphere aligns with UN SDGs to create positive global impact through education and wellbeing</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {sdgGoals.map((goal, i) => {
+              const Icon = goal.icon;
+              return (
+                <div
+                  key={goal.id}
+                  className="glass-card rounded-2xl p-6 border border-white/10 group hover:border-white/20 transition-all duration-300 hover:shadow-xl hover:shadow-blue-900/20 animate-slide-up"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${goal.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                    <Icon size={24} className="text-white" />
+                  </div>
+                  <div className="mb-3">
+                    <p className="text-sm text-blue-300/50 mb-1">SDG Goal {goal.id}</p>
+                    <h3 className="text-white font-bold text-lg">{goal.title}</h3>
+                    <p className="text-blue-200/60 text-sm mt-1">{goal.subtitle}</p>
+                  </div>
+                  <p className="text-blue-200/50 text-sm leading-relaxed">{goal.description}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="glass-card rounded-2xl p-8 border border-blue-500/20 bg-gradient-to-r from-blue-600/5 to-purple-600/5">
+            <div className="grid md:grid-cols-6 gap-4">
+              {benefits.map((benefit, i) => {
+                const Icon = benefit.icon;
+                return (
+                  <div key={benefit.title} className="flex flex-col items-center text-center group cursor-default animate-slide-up" style={{ animationDelay: `${i * 60}ms` }}>
+                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3 group-hover:bg-white/10 group-hover:scale-110 transition-all">
+                      <Icon size={20} className="text-blue-400 group-hover:text-blue-300" />
+                    </div>
+                    <h4 className="text-white font-semibold text-sm mb-1">{benefit.title}</h4>
+                    <p className="text-blue-300/50 text-xs">{benefit.desc}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="testimonials" className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-4xl font-bold text-white mb-4">Loved by Students</h2>
             <p className="text-blue-200/50 text-lg">Join thousands of students achieving more</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map(t => (
-              <div key={t.name} className="glass-card rounded-2xl p-6 hover:bg-white/10 transition-all duration-300">
-                <div className="flex gap-1 mb-4">{Array.from({ length: t.stars }).map((_, i) => <Star key={i} size={14} className="text-yellow-400 fill-yellow-400" />)}</div>
-                <p className="text-blue-100/70 text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">{t.name.split(' ').map(n => n[0]).join('')}</div>
-                  <div><p className="text-white text-sm font-medium">{t.name}</p><p className="text-blue-300/50 text-xs">{t.major}</p></div>
+
+          <div className="relative">
+            <div className="glass-card rounded-3xl p-8 border border-white/10 min-h-80 flex flex-col justify-center">
+              <div className="flex gap-1 mb-6">{Array.from({ length: testimonials[activeTestimonial].stars }).map((_, i) => <Star key={i} size={18} className="text-yellow-400 fill-yellow-400" />)}</div>
+              <p className="text-xl text-blue-100/80 leading-relaxed mb-8 italic">"{testimonials[activeTestimonial].text}"</p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">{testimonials[activeTestimonial].name.split(' ').map(n => n[0]).join('')}</div>
+                <div>
+                  <p className="text-white font-semibold">{testimonials[activeTestimonial].name}</p>
+                  <p className="text-blue-300/50 text-sm">{testimonials[activeTestimonial].major}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-2 mt-6">
+              {testimonials.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveTestimonial(i)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    i === activeTestimonial ? 'bg-blue-400 w-8' : 'bg-white/20 hover:bg-white/40'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mt-16">
+            {testimonials.map((t, idx) => (
+              <div key={t.name} className={`glass-card rounded-2xl p-6 transition-all duration-300 cursor-pointer ${
+                idx === activeTestimonial ? 'bg-white/10 border-blue-500/30' : 'hover:bg-white/5'
+              } border border-white/10`} onClick={() => setActiveTestimonial(idx)}>
+                <div className="flex gap-1 mb-3">{Array.from({ length: t.stars }).map((_, i) => <Star key={i} size={12} className="text-yellow-400 fill-yellow-400" />)}</div>
+                <p className="text-blue-100/60 text-xs leading-relaxed mb-3 line-clamp-3">"{t.text}"</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">{t.name.split(' ').map(n => n[0]).join('')}</div>
+                  <div><p className="text-white text-xs font-medium">{t.name}</p><p className="text-blue-300/50 text-[10px]">{t.major}</p></div>
                 </div>
               </div>
             ))}
@@ -213,6 +320,92 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           <p className="text-blue-300/30 text-sm">2026 StudySphere. Built for students, by students.</p>
         </div>
       </footer>
+
+      <style>{`
+        html {
+          scroll-behavior: smooth;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+
+        @keyframes glow {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.5);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out;
+        }
+
+        .animate-slide-up {
+          animation: slideUp 0.6s ease-out forwards;
+          opacity: 0;
+        }
+
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+
+        .text-gradient {
+          background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .text-gradient-blue {
+          background: linear-gradient(135deg, #60a5fa 0%, #06b6d4 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .glow-blue {
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+      `}</style>
     </div>
   );
 }
