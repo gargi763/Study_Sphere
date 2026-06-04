@@ -1,5 +1,5 @@
 import { BookOpen, LayoutDashboard, Calendar, Bell, Wallet, BarChart2, ClipboardList, Settings, LogOut, ChevronLeft, ChevronRight, GraduationCap, FileText, CreditCard, Brain } from 'lucide-react';
-import { student } from '../../data/studentData';
+import { useAuthContext } from '../../context/AuthContext';
 
 interface SidebarProps {
   activeSection: string;
@@ -25,6 +25,15 @@ const navItems = [
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, collapsed, onToggleCollapse, onNavigate, unreadCount }: SidebarProps) {
+  const { profile, signOut } = useAuthContext();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      onNavigate('login');
+    } catch {}
+  };
+
   return (
     <aside className={`fixed left-0 top-0 h-full z-40 flex flex-col transition-all duration-300 glass-dark border-r transition-theme border-slate-300/20 dark:border-white/8 shadow-lg ${collapsed ? 'w-16' : 'w-60'}`}>
       <div className={`flex items-center gap-3 px-4 py-6 border-b transition-theme border-slate-300/20 dark:border-white/8 ${collapsed ? 'justify-center' : ''}`}>
@@ -49,15 +58,15 @@ export default function Sidebar({ activeSection, onSectionChange, collapsed, onT
       {!collapsed && (
         <div className="px-3 py-4 border-t transition-theme border-slate-300/20 dark:border-white/8">
           <div className="glass rounded-lg px-4 py-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shrink-0">{student.avatar}</div>
-            <div className="flex-1 min-w-0"><p className="text-slate-900 dark:text-white text-sm font-medium transition-colors truncate">{student.name}</p><p className="text-slate-600 dark:text-blue-300/40 text-xs transition-colors truncate">{student.major}</p></div>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shrink-0">{profile?.avatar || '??'}</div>
+            <div className="flex-1 min-w-0"><p className="text-slate-900 dark:text-white text-sm font-medium transition-colors truncate">{profile?.name || 'Student'}</p><p className="text-slate-600 dark:text-blue-300/40 text-xs transition-colors truncate">{profile?.major || 'Undeclared'}</p></div>
           </div>
         </div>
       )}
 
       <div className={`px-2 py-4 border-t transition-theme border-slate-300/20 dark:border-white/8 flex ${collapsed ? 'flex-col items-center gap-2' : 'items-center justify-between'}`}>
         {collapsed ? (<button className="text-slate-600 dark:text-blue-300/40 hover:text-slate-900 dark:hover:text-blue-200 transition-colors p-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 smooth-hover"><Settings size={18} /></button>) : (<button className="flex items-center gap-2 text-slate-600 dark:text-blue-300/40 hover:text-slate-900 dark:hover:text-blue-200 transition-colors px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-sm font-medium smooth-hover"><Settings size={16} />Settings</button>)}
-        <button onClick={() => onNavigate('login')} className="flex items-center gap-2 text-slate-600 dark:text-blue-300/40 hover:text-red-600 dark:hover:text-red-400 transition-colors px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-sm font-medium smooth-hover" title="Sign Out"><LogOut size={collapsed ? 18 : 16} />{!collapsed && 'Sign Out'}</button>
+        <button onClick={handleSignOut} className="flex items-center gap-2 text-slate-600 dark:text-blue-300/40 hover:text-red-600 dark:hover:text-red-400 transition-colors px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-sm font-medium smooth-hover" title="Sign Out"><LogOut size={collapsed ? 18 : 16} />{!collapsed && 'Sign Out'}</button>
       </div>
 
       <button onClick={onToggleCollapse} className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full glass-dark border transition-theme border-slate-300/30 dark:border-white/20 flex items-center justify-center text-slate-600 dark:text-blue-300/60 hover:text-slate-900 dark:hover:text-white transition-all hover:scale-110 smooth-hover">{collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}</button>
