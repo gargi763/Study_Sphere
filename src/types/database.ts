@@ -2,6 +2,21 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
 export type InsertTables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
 export type UpdateTables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
 
+export type UserRole = 'student' | 'faculty' | 'admin';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  avatar_url: string | null;
+  department: string | null;
+  phone: string | null;
+  bio: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {

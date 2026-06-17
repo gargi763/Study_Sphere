@@ -1,55 +1,48 @@
 import { useState, useEffect, useCallback } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { Tables, InsertTables, UpdateTables } from '../types/database';
+import { UserProfile, UserRole } from '../types/database';
 
-type StudentProfile = Tables<'student_profiles'>;
-type Assignment = Tables<'assignments'>;
-type Submission = Tables<'submissions'>;
-type AttendanceRecord = Tables<'attendance_records'>;
-type Expense = Tables<'expenses'>;
-type Notification = Tables<'notifications'>;
-type AIRecommendation = Tables<'ai_recommendations'>;
-type StudyPlan = Tables<'study_plans'>;
-type Faculty = Tables<'faculty'>;
-type Task = Tables<'tasks'>;
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
-// ─── Auth Hook ────────────────────────────────────────────────
 export function useAuth() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, metadata: Record<string, string>) => {
+  const signUp = async (email: string, password: string, fullName: string, role: UserRole) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: metadata },
+      options: {
+        data: { full_name: fullName, role },
+      },
     });
     if (error) throw error;
+    // Ensure profile row exists (trigger may have fired, but also insert here as fallback)
     if (data.user) {
-      await supabase.from('student_profiles').insert({
+      await supabase.from('user_profiles').upsert({
         id: data.user.id,
-        name: metadata.name || '',
         email,
-        student_id: metadata.student_id || `STU-${Date.now().toString().slice(-8)}`,
-        major: metadata.major || 'Undeclared',
-        year: metadata.year || '1st Year',
-        gpa: 0.00,
-        avatar: metadata.name ? metadata.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '??',
-        university: metadata.university || 'University',
-      });
+        full_name: fullName,
+        role,
+      }, { onConflict: 'id' });
     }
     return data;
   };
@@ -65,414 +58,462 @@ export function useAuth() {
     if (error) throw error;
   };
 
-  return { user, loading, signUp, signIn, signOut };
+  return { user, session, loading, signUp, signIn, signOut };
 }
 
-// ─── Generic fetch hook ───────────────────────────────────────
-function useFetch<T>(tableName: string, queryBuilder: (q: any) => any, deps: any[] = []) {
-  const [data, setData] = useState<T[]>([]);
+// ─── User Profile ─────────────────────────────────────────────────────────────
+
+export function useUserProfile(userId: string | undefined) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      let query = supabase.from(tableName).select('*');
-      query = queryBuilder(query);
-      const { data: rows, error: fetchError } = await query;
-      if (fetchError) throw fetchError;
-      setData((rows as T[]) || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  const fetchProfile = useCallback(async () => {
+    if (!userId) { setLoading(false); return; }
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    setProfile(data as UserProfile | null);
+    setLoading(false);
+  }, [userId]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-  return { data, loading, error, refetch: fetchData, setData };
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw error;
+    setProfile(data as UserProfile);
+    return data;
+  };
+
+  return { profile, loading, updateProfile, refetch: fetchProfile };
 }
 
-// ─── Student Profile ──────────────────────────────────────────
-export function useStudentProfile(userId: string | null) {
-  const [profile, setProfile] = useState<StudentProfile | null>(null);
+// ─── Student Profile ──────────────────────────────────────────────────────────
+
+export function useStudentProfile(userId?: string) {
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
-    (async () => {
-      try {
-        setLoading(true);
-        const { data, error: fetchError } = await supabase
-          .from('student_profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-        if (fetchError) throw fetchError;
+    supabase
+      .from('student_profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
         setProfile(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
         setLoading(false);
-      }
-    })();
+      });
   }, [userId]);
 
-  const updateProfile = async (updates: UpdateTables<'student_profiles'>) => {
+  const updateProfile = async (updates: Record<string, unknown>) => {
     if (!userId) return;
-    const { data, error: updateError } = await supabase
+    const { data, error } = await supabase
       .from('student_profiles')
       .update(updates)
       .eq('id', userId)
       .select()
-      .maybeSingle();
-    if (updateError) throw updateError;
+      .single();
+    if (error) throw error;
     setProfile(data);
     return data;
   };
 
-  return { profile, loading, error, updateProfile };
+  return { profile, loading, updateProfile };
 }
 
-// ─── Assignments & Submissions ────────────────────────────────
-export function useAssignments(userId: string | null) {
-  const { data: assignments, loading, error, refetch, setData } = useFetch<Assignment>(
-    'assignments',
-    (q: any) => q.order('due_date', { ascending: true }),
-    [userId]
-  );
+// ─── Generic Fetch ────────────────────────────────────────────────────────────
 
-  const { data: submissions } = useFetch<Submission>(
-    'submissions',
-    (q: any) => userId ? q.eq('student_id', userId) : q,
-    [userId]
-  );
+export function useFetch<T>(
+  table: string,
+  filter?: { column: string; value: string | null }
+) {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addAssignment = async (assignment: InsertTables<'assignments'>) => {
-    const { data, error: insertError } = await supabase.from('assignments').insert(assignment).select().maybeSingle();
-    if (insertError) throw insertError;
-    setData(prev => [...prev, data]);
+  const fetchData = useCallback(async () => {
+    if (filter && !filter.value) { setLoading(false); return; }
+    let query = supabase.from(table).select('*').order('created_at', { ascending: false });
+    if (filter) query = query.eq(filter.column, filter.value as string);
+    const { data: rows } = await query;
+    setData((rows ?? []) as T[]);
+    setLoading(false);
+  }, [table, filter?.value]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  return { data, loading, refetch: fetchData };
+}
+
+// ─── Assignments ──────────────────────────────────────────────────────────────
+
+export function useAssignments(userId?: string) {
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    if (!userId) { setLoading(false); return; }
+    const [aRes, sRes] = await Promise.all([
+      supabase.from('assignments').select('*').order('due_date', { ascending: true }),
+      supabase.from('submissions').select('*').eq('student_id', userId),
+    ]);
+    setAssignments(aRes.data ?? []);
+    setSubmissions(sRes.data ?? []);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const addAssignment = async (assignment: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('assignments').insert(assignment).select().single();
+    if (error) throw error;
+    setAssignments(prev => [...prev, data]);
     return data;
   };
 
-  const updateAssignment = async (id: string, updates: UpdateTables<'assignments'>) => {
-    const { data, error: updateError } = await supabase.from('assignments').update(updates).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(a => a.id === id ? data : a));
+  const updateAssignment = async (id: string, updates: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('assignments').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+    setAssignments(prev => prev.map(a => a.id === id ? data : a));
     return data;
   };
 
   const deleteAssignment = async (id: string) => {
-    const { error: deleteError } = await supabase.from('assignments').delete().eq('id', id);
-    if (deleteError) throw deleteError;
-    setData(prev => prev.filter(a => a.id !== id));
+    const { error } = await supabase.from('assignments').delete().eq('id', id);
+    if (error) throw error;
+    setAssignments(prev => prev.filter(a => a.id !== id));
   };
 
-  const addSubmission = async (submission: InsertTables<'submissions'>) => {
-    const { data, error: insertError } = await supabase.from('submissions').insert(submission).select().maybeSingle();
-    if (insertError) throw insertError;
+  const submitAssignment = async (submission: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('submissions').insert(submission).select().single();
+    if (error) throw error;
+    setSubmissions(prev => [...prev, data]);
     return data;
   };
 
-  const updateSubmission = async (id: string, updates: UpdateTables<'submissions'>) => {
-    const { data, error: updateError } = await supabase.from('submissions').update(updates).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    return data;
-  };
-
-  const getSubmissionForAssignment = (assignmentId: string) =>
-    submissions.find(s => s.assignment_id === assignmentId);
-
-  return {
-    assignments,
-    submissions,
-    loading,
-    error,
-    refetch,
-    addAssignment,
-    updateAssignment,
-    deleteAssignment,
-    addSubmission,
-    updateSubmission,
-    getSubmissionForAssignment,
-  };
+  return { assignments, submissions, loading, addAssignment, updateAssignment, deleteAssignment, submitAssignment, refetch: fetchAll };
 }
 
-// ─── Attendance ───────────────────────────────────────────────
-export function useAttendance(userId: string | null) {
-  const { data: records, loading, error, refetch, setData } = useFetch<AttendanceRecord>(
-    'attendance_records',
-    (q: any) => userId ? q.eq('student_id', userId).order('date', { ascending: false }) : q.order('date', { ascending: false }),
-    [userId]
-  );
+// ─── Attendance ───────────────────────────────────────────────────────────────
 
-  const addRecord = async (record: InsertTables<'attendance_records'>) => {
-    const { data, error: insertError } = await supabase.from('attendance_records').insert(record).select().maybeSingle();
-    if (insertError) throw insertError;
-    setData(prev => [data, ...prev]);
+export function useAttendance(userId?: string) {
+  const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchRecords = useCallback(async () => {
+    if (!userId) { setLoading(false); return; }
+    const { data } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('student_id', userId)
+      .order('date', { ascending: false });
+    setRecords(data ?? []);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+
+  const addRecord = async (record: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('attendance_records').insert(record).select().single();
+    if (error) throw error;
+    setRecords(prev => [data, ...prev]);
     return data;
   };
 
-  const updateRecord = async (id: string, updates: UpdateTables<'attendance_records'>) => {
-    const { data, error: updateError } = await supabase.from('attendance_records').update(updates).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(r => r.id === id ? data : r));
-    return data;
-  };
-
-  const deleteRecord = async (id: string) => {
-    const { error: deleteError } = await supabase.from('attendance_records').delete().eq('id', id);
-    if (deleteError) throw deleteError;
-    setData(prev => prev.filter(r => r.id !== id));
-  };
-
-  const getSubjectStats = useCallback(() => {
-    const subjects: Record<string, { total: number; attended: number; percentage: number }> = {};
+  const getSubjectStats = () => {
+    const map: Record<string, { present: number; total: number }> = {};
     records.forEach(r => {
-      if (!subjects[r.subject]) subjects[r.subject] = { total: 0, attended: 0, percentage: 0 };
-      subjects[r.subject].total += 1;
-      if (r.status === 'present' || r.status === 'late') subjects[r.subject].attended += 1;
+      if (!map[r.subject]) map[r.subject] = { present: 0, total: 0 };
+      map[r.subject].total++;
+      if (r.status === 'present') map[r.subject].present++;
     });
-    Object.keys(subjects).forEach(key => {
-      const s = subjects[key];
-      s.percentage = s.total > 0 ? Math.round((s.attended / s.total) * 100) : 0;
-    });
-    return subjects;
-  }, [records]);
+    return Object.entries(map).map(([subject, s]) => ({
+      subject,
+      percentage: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0,
+      present: s.present,
+      total: s.total,
+    }));
+  };
 
-  const getOverallPercentage = useCallback(() => {
-    if (records.length === 0) return 0;
-    const attended = records.filter(r => r.status === 'present' || r.status === 'late').length;
-    return Math.round((attended / records.length) * 100);
-  }, [records]);
+  const getOverallPercentage = () => {
+    if (!records.length) return 0;
+    const present = records.filter(r => r.status === 'present').length;
+    return Math.round((present / records.length) * 100);
+  };
 
-  return { records, loading, error, refetch, addRecord, updateRecord, deleteRecord, getSubjectStats, getOverallPercentage };
+  return { records, loading, addRecord, getSubjectStats, getOverallPercentage, refetch: fetchRecords };
 }
 
-// ─── Expenses ─────────────────────────────────────────────────
-export function useExpenses(userId: string | null) {
-  const { data: expenses, loading, error, refetch, setData } = useFetch<Expense>(
-    'expenses',
-    (q: any) => userId ? q.eq('payer_id', userId).order('date', { ascending: false }) : q.order('date', { ascending: false }),
-    [userId]
-  );
+// ─── Expenses ─────────────────────────────────────────────────────────────────
 
-  const addExpense = async (expense: InsertTables<'expenses'>) => {
-    const { data, error: insertError } = await supabase.from('expenses').insert(expense).select().maybeSingle();
-    if (insertError) throw insertError;
-    setData(prev => [data, ...prev]);
+export function useExpenses(userId?: string) {
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchExpenses = useCallback(async () => {
+    if (!userId) { setLoading(false); return; }
+    const { data } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('student_id', userId)
+      .order('date', { ascending: false });
+    setExpenses(data ?? []);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
+
+  const addExpense = async (expense: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('expenses').insert(expense).select().single();
+    if (error) throw error;
+    setExpenses(prev => [data, ...prev]);
     return data;
   };
 
-  const updateExpense = async (id: string, updates: UpdateTables<'expenses'>) => {
-    const { data, error: updateError } = await supabase.from('expenses').update(updates).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(e => e.id === id ? data : e));
+  const updateExpense = async (id: string, updates: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('expenses').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+    setExpenses(prev => prev.map(e => e.id === id ? data : e));
     return data;
   };
 
   const deleteExpense = async (id: string) => {
-    const { error: deleteError } = await supabase.from('expenses').delete().eq('id', id);
-    if (deleteError) throw deleteError;
-    setData(prev => prev.filter(e => e.id !== id));
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (error) throw error;
+    setExpenses(prev => prev.filter(e => e.id !== id));
   };
 
-  const getTotalsByCategory = useCallback(() => {
-    const totals: Record<string, number> = {};
+  const getCategoryTotals = () => {
+    const map: Record<string, number> = {};
+    expenses.forEach(e => { map[e.category] = (map[e.category] ?? 0) + e.amount; });
+    return map;
+  };
+
+  const getMonthlyTotals = () => {
+    const map: Record<string, number> = {};
     expenses.forEach(e => {
-      totals[e.category] = (totals[e.category] || 0) + Number(e.amount);
+      const month = e.date?.slice(0, 7) ?? '';
+      map[month] = (map[month] ?? 0) + e.amount;
     });
-    return totals;
-  }, [expenses]);
+    return map;
+  };
 
-  const getTotalSpent = useCallback(() => {
-    return expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-  }, [expenses]);
-
-  const getMonthlyTotals = useCallback(() => {
-    const monthly: Record<string, number> = {};
-    expenses.forEach(e => {
-      const month = new Date(e.date).toLocaleString('default', { month: 'short' });
-      monthly[month] = (monthly[month] || 0) + Number(e.amount);
-    });
-    return Object.entries(monthly).map(([month, amount]) => ({ month, amount }));
-  }, [expenses]);
-
-  return { expenses, loading, error, refetch, addExpense, updateExpense, deleteExpense, getTotalsByCategory, getTotalSpent, getMonthlyTotals };
+  return { expenses, loading, addExpense, updateExpense, deleteExpense, getCategoryTotals, getMonthlyTotals, refetch: fetchExpenses };
 }
 
-// ─── Notifications ────────────────────────────────────────────
-export function useNotifications(userId: string | null) {
-  const { data: notifications, loading, error, refetch, setData } = useFetch<Notification>(
-    'notifications',
-    (q: any) => userId ? q.eq('student_id', userId).order('created_at', { ascending: false }) : q.order('created_at', { ascending: false }),
-    [userId]
-  );
+// ─── Notifications ────────────────────────────────────────────────────────────
 
-  const addNotification = async (notification: InsertTables<'notifications'>) => {
-    const { data, error: insertError } = await supabase.from('notifications').insert(notification).select().maybeSingle();
-    if (insertError) throw insertError;
-    setData(prev => [data, ...prev]);
-    return data;
-  };
+export function useNotifications(userId?: string) {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) { setLoading(false); return; }
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    setNotifications(data ?? []);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
   const markAsRead = async (id: string) => {
-    const { data, error: updateError } = await supabase.from('notifications').update({ read: true }).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(n => n.id === id ? data : n));
-    return data;
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
   const markAllRead = async () => {
     if (!userId) return;
-    const { error: updateError } = await supabase.from('notifications').update({ read: true }).eq('student_id', userId).eq('read', false).select();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(n => ({ ...n, read: true })));
+    await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const deleteNotification = async (id: string) => {
-    const { error: deleteError } = await supabase.from('notifications').delete().eq('id', id);
-    if (deleteError) throw deleteError;
-    setData(prev => prev.filter(n => n.id !== id));
+    await supabase.from('notifications').delete().eq('id', id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  return { notifications, loading, error, refetch, addNotification, markAsRead, markAllRead, deleteNotification, unreadCount };
+  return { notifications, loading, markAsRead, markAllRead, deleteNotification, unreadCount, refetch: fetchNotifications };
 }
 
-// ─── AI Recommendations ─────────────────────────────────────
-export function useAIRecommendations(userId: string | null) {
-  const { data: recommendations, loading, error, refetch, setData } = useFetch<AIRecommendation>(
-    'ai_recommendations',
-    (q: any) => userId ? q.eq('student_id', userId).order('created_at', { ascending: false }) : q.order('created_at', { ascending: false }),
-    [userId]
-  );
+// ─── AI Recommendations ───────────────────────────────────────────────────────
 
-  const addRecommendation = async (rec: InsertTables<'ai_recommendations'>) => {
-    const { data, error: insertError } = await supabase.from('ai_recommendations').insert(rec).select().maybeSingle();
-    if (insertError) throw insertError;
-    setData(prev => [data, ...prev]);
-    return data;
-  };
-
-  const markAsRead = async (id: string) => {
-    const { data, error: updateError } = await supabase.from('ai_recommendations').update({ is_read: true }).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(r => r.id === id ? data : r));
-    return data;
-  };
-
-  const dismissRecommendation = async (id: string) => {
-    const { error: deleteError } = await supabase.from('ai_recommendations').delete().eq('id', id);
-    if (deleteError) throw deleteError;
-    setData(prev => prev.filter(r => r.id !== id));
-  };
-
-  return { recommendations, loading, error, refetch, addRecommendation, markAsRead, dismissRecommendation };
-}
-
-// ─── Study Plans ──────────────────────────────────────────────
-export function useStudyPlans(userId: string | null) {
-  const { data: plans, loading, error, refetch, setData } = useFetch<StudyPlan>(
-    'study_plans',
-    (q: any) => userId ? q.eq('student_id', userId).order('sort_order', { ascending: true }) : q.order('sort_order', { ascending: true }),
-    [userId]
-  );
-
-  const addPlan = async (plan: InsertTables<'study_plans'>) => {
-    const { data, error: insertError } = await supabase.from('study_plans').insert(plan).select().maybeSingle();
-    if (insertError) throw insertError;
-    setData(prev => [...prev, data]);
-    return data;
-  };
-
-  const updatePlan = async (id: string, updates: UpdateTables<'study_plans'>) => {
-    const { data, error: updateError } = await supabase.from('study_plans').update(updates).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(p => p.id === id ? data : p));
-    return data;
-  };
-
-  const deletePlan = async (id: string) => {
-    const { error: deleteError } = await supabase.from('study_plans').delete().eq('id', id);
-    if (deleteError) throw deleteError;
-    setData(prev => prev.filter(p => p.id !== id));
-  };
-
-  const toggleCompleted = async (id: string, completed: boolean) => {
-    return updatePlan(id, { completed: !completed });
-  };
-
-  return { plans, loading, error, refetch, addPlan, updatePlan, deletePlan, toggleCompleted };
-}
-
-// ─── Faculty ──────────────────────────────────────────────────
-export function useFaculty() {
-  const { data: faculty, loading, error, refetch } = useFetch<Faculty>(
-    'faculty',
-    (q: any) => q.order('name', { ascending: true }),
-    []
-  );
-  return { faculty, loading, error, refetch };
-}
-
-// ─── Tasks ───────────────────────────────────────────────────
-export function useTasks(userId: string | null) {
-  const { data: tasks, loading, error, refetch, setData } = useFetch<Task>(
-    'tasks',
-    (q: any) => userId ? q.eq('student_id', userId).order('created_at', { ascending: false }) : q.order('created_at', { ascending: false }),
-    [userId]
-  );
-
-  const addTask = async (task: InsertTables<'tasks'>) => {
-    const { data, error: insertError } = await supabase.from('tasks').insert(task).select().maybeSingle();
-    if (insertError) throw insertError;
-    setData(prev => [data, ...prev]);
-    return data;
-  };
-
-  const updateTask = async (id: string, updates: UpdateTables<'tasks'>) => {
-    const { data, error: updateError } = await supabase.from('tasks').update(updates).eq('id', id).select().maybeSingle();
-    if (updateError) throw updateError;
-    setData(prev => prev.map(t => t.id === id ? data : t));
-    return data;
-  };
-
-  const deleteTask = async (id: string) => {
-    const { error: deleteError } = await supabase.from('tasks').delete().eq('id', id);
-    if (deleteError) throw deleteError;
-    setData(prev => prev.filter(t => t.id !== id));
-  };
-
-  return { tasks, loading, error, refetch, addTask, updateTask, deleteTask };
-}
-
-// ─── Submissions (standalone) ─────────────────────────────────
-export function useSubmissions(userId: string | null) {
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+export function useAIRecommendations(userId?: string) {
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('submissions')
-          .select('*')
-          .eq('student_id', userId);
-        if (error) throw error;
-        setSubmissions(data || []);
-      } catch (err) {
-        console.error('Failed to fetch submissions:', err);
-      } finally {
+    supabase
+      .from('ai_recommendations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setRecommendations(data ?? []);
         setLoading(false);
-      }
-    })();
+      });
+  }, [userId]);
+
+  const addRecommendation = async (rec: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('ai_recommendations').insert(rec).select().single();
+    if (error) throw error;
+    setRecommendations(prev => [data, ...prev]);
+    return data;
+  };
+
+  const markAsRead = async (id: string) => {
+    await supabase.from('ai_recommendations').update({ is_read: true }).eq('id', id);
+    setRecommendations(prev => prev.map(r => r.id === id ? { ...r, is_read: true } : r));
+  };
+
+  const dismiss = async (id: string) => {
+    await supabase.from('ai_recommendations').update({ is_dismissed: true }).eq('id', id);
+    setRecommendations(prev => prev.filter(r => r.id !== id));
+  };
+
+  return { recommendations, loading, addRecommendation, markAsRead, dismiss };
+}
+
+// ─── Study Plans ──────────────────────────────────────────────────────────────
+
+export function useStudyPlans(userId?: string) {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    supabase
+      .from('study_plans')
+      .select('*, tasks(*)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setPlans(data ?? []);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  const addPlan = async (plan: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('study_plans').insert(plan).select().single();
+    if (error) throw error;
+    setPlans(prev => [data, ...prev]);
+    return data;
+  };
+
+  const updatePlan = async (id: string, updates: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('study_plans').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+    setPlans(prev => prev.map(p => p.id === id ? data : p));
+    return data;
+  };
+
+  const deletePlan = async (id: string) => {
+    await supabase.from('study_plans').delete().eq('id', id);
+    setPlans(prev => prev.filter(p => p.id !== id));
+  };
+
+  const toggleCompleted = async (id: string, completed: boolean) => {
+    return updatePlan(id, { completed });
+  };
+
+  return { plans, loading, addPlan, updatePlan, deletePlan, toggleCompleted };
+}
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+
+export function useTasks(userId?: string) {
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setTasks(data ?? []);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  const addTask = async (task: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('tasks').insert(task).select().single();
+    if (error) throw error;
+    setTasks(prev => [data, ...prev]);
+    return data;
+  };
+
+  const updateTask = async (id: string, updates: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+    setTasks(prev => prev.map(t => t.id === id ? data : t));
+    return data;
+  };
+
+  const deleteTask = async (id: string) => {
+    await supabase.from('tasks').delete().eq('id', id);
+    setTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  return { tasks, loading, addTask, updateTask, deleteTask };
+}
+
+// ─── Submissions ──────────────────────────────────────────────────────────────
+
+export function useSubmissions(userId?: string) {
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    supabase
+      .from('submissions')
+      .select('*')
+      .eq('student_id', userId)
+      .order('submitted_at', { ascending: false })
+      .then(({ data }) => {
+        setSubmissions(data ?? []);
+        setLoading(false);
+      });
   }, [userId]);
 
   return { submissions, loading };
+}
+
+// ─── Faculty ──────────────────────────────────────────────────────────────────
+
+export function useFaculty() {
+  const [faculty, setFaculty] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from('faculty')
+      .select('*')
+      .order('name')
+      .then(({ data }) => {
+        setFaculty(data ?? []);
+        setLoading(false);
+      });
+  }, []);
+
+  return { faculty, loading };
 }

@@ -1,33 +1,50 @@
-import { createContext, useContext, ReactNode } from 'react';
-import { useAuth, useStudentProfile } from '../hooks/useData';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { User } from '@supabase/supabase-js';
+import { useAuth, useUserProfile, useStudentProfile } from '../hooks/useData';
+import { UserProfile, UserRole } from '../types/database';
 
-interface AuthContextType {
-  user: any;
-  profile: any;
+interface AuthContextValue {
+  user: User | null;
+  profile: UserProfile | null;
+  studentProfile: any | null;
+  role: UserRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, metadata: Record<string, string>) => Promise<any>;
+  signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: any) => Promise<any>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<any>;
+  updateStudentProfile: (updates: Record<string, unknown>) => Promise<any>;
+  refetchProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
-  const { profile, loading: profileLoading, updateProfile } = useStudentProfile(user?.id ?? null);
+  const { profile, loading: profileLoading, updateProfile, refetch: refetchProfile } = useUserProfile(user?.id);
+  const { profile: studentProfile, updateProfile: updateStudentProfile } = useStudentProfile(user?.id);
 
-  const loading = authLoading || profileLoading;
+  const loading = authLoading || (!!user && profileLoading);
 
-  return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, updateProfile }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value: AuthContextValue = {
+    user,
+    profile,
+    studentProfile,
+    role: profile?.role ?? null,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+    updateProfile,
+    updateStudentProfile,
+    refetchProfile,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuthContext must be used within AuthProvider');
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuthContext must be used inside AuthProvider');
+  return ctx;
 }

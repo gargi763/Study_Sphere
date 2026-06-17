@@ -14,9 +14,9 @@ import type { Tables } from '../../types/database';
 type Assignment = Tables<'assignments'>;
 
 export default function OverviewSection() {
-  const { profile, user } = useAuthContext();
-  const { getOverallPercentage } = useAttendance(user?.id ?? null);
-  const { submissions } = useSubmissions(user?.id ?? null);
+  const { profile, studentProfile, user } = useAuthContext();
+  const { getOverallPercentage } = useAttendance(user?.id);
+  const { submissions } = useSubmissions(user?.id);
 
   const [, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function OverviewSection() {
   const pendingCount = submissions.filter(s => s.status === 'pending' || s.status === 'submitted').length;
   const completedCount = submissions.filter(s => s.status === 'graded').length;
   const overallAttendance = getOverallPercentage();
-  const gpa = profile?.gpa ?? 0;
+  const gpa = studentProfile?.gpa ?? 0;
 
   const quickStats = [
     { label: 'GPA', value: gpa.toFixed(1), sub: 'Current semester', icon: Award, color: 'from-blue-600/30 to-blue-500/20', iconColor: 'text-blue-400', trend: gpa >= 3.5 ? 'Excellent' : 'Good', trendUp: true },
@@ -75,10 +75,10 @@ export default function OverviewSection() {
       </div>
 
       <div className="glass-card rounded-2xl p-6 border transition-theme border-slate-300/20 dark:border-white/8 flex items-center gap-4 smooth-hover">
-        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shrink-0">{profile?.avatar || '??'}</div>
+        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shrink-0">{(profile?.full_name?.[0] ?? '?').toUpperCase()}</div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap"><h2 className="text-slate-900 dark:text-white font-semibold text-lg transition-colors">{profile?.name || 'Student'}</h2><span className="text-xs text-slate-600 dark:text-blue-300/50 glass rounded-lg px-3 py-1 transition-colors">{profile?.year || 'Student'}</span></div>
-          <div className="flex items-center gap-4 mt-2 flex-wrap"><span className="text-slate-600 dark:text-blue-300/50 text-xs transition-colors">{profile?.major || 'Undeclared'}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs transition-colors">{profile?.university || 'University'}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs font-mono transition-colors">{profile?.student_id || ''}</span></div>
+          <div className="flex items-center gap-3 flex-wrap"><h2 className="text-slate-900 dark:text-white font-semibold text-lg transition-colors">{profile?.full_name || 'Student'}</h2><span className="text-xs text-slate-600 dark:text-blue-300/50 glass rounded-lg px-3 py-1 transition-colors">{studentProfile?.year || 'Student'}</span></div>
+          <div className="flex items-center gap-4 mt-2 flex-wrap"><span className="text-slate-600 dark:text-blue-300/50 text-xs transition-colors">{studentProfile?.major || profile?.department || 'Undeclared'}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs transition-colors">{studentProfile?.university || 'University'}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs font-mono transition-colors">{studentProfile?.student_id || ''}</span></div>
         </div>
       </div>
 

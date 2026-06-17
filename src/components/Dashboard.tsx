@@ -1,81 +1,114 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Sidebar from './dashboard/Sidebar';
 import TopBar from './dashboard/TopBar';
+import Footer from './Footer';
+import { useAuthContext } from '../context/AuthContext';
+
+// Student sections
 import OverviewSection from './dashboard/OverviewSection';
-import AttendanceCard from './dashboard/AttendanceCard';
+import StudentAnalytics from './dashboard/StudentAnalytics';
+import AIRecommendations from './dashboard/AIRecommendations';
 import AttendanceManagement from './dashboard/AttendanceManagement';
 import AssignmentManagement from './dashboard/AssignmentManagement';
 import ExpenseManagement from './dashboard/ExpenseManagement';
-import AIRecommendations from './dashboard/AIRecommendations';
-import StudentAnalytics from './dashboard/StudentAnalytics';
+import AttendanceCard from './dashboard/AttendanceCard';
 import AssignmentsCard from './dashboard/AssignmentsCard';
 import NotificationsCard from './dashboard/NotificationsCard';
-import ExpenseCard from './dashboard/ExpenseCard';
 import StudyPlanner from './dashboard/StudyPlanner';
-import AnalyticsCard from './dashboard/AnalyticsCard';
-import Footer from './Footer';
-import { notifications } from '../data/studentData';
 
-interface DashboardProps {
-  onNavigate: (page: 'landing' | 'login' | 'dashboard') => void;
-}
+// Faculty sections
+import FacultyOverview from './dashboard/faculty/FacultyOverview';
 
-const sectionTitles: Record<string, string> = {
-  overview: 'Overview',
-  'student-analytics': 'Student Analytics',
-  'ai-recommendations': 'AI Insights',
-  'attendance-mgmt': 'Attendance Management',
-  'assignment-mgmt': 'Assignment Management',
-  'expense-mgmt': 'Expense Management',
-  attendance: 'Attendance',
-  assignments: 'Assignments',
-  planner: 'Study Planner',
-  expenses: 'Expenses',
-  analytics: 'Analytics',
-  notifications: 'Notifications'
-};
+// Admin sections
+import AdminOverview from './dashboard/admin/AdminOverview';
 
-function SectionContent({ section }: { section: string }) {
+// Shared
+import UserProfilePage from './dashboard/UserProfilePage';
+
+function StudentContent({ section }: { section: string }) {
   switch (section) {
     case 'overview': return <OverviewSection />;
-    case 'student-analytics': return <StudentAnalytics />;
-    case 'ai-recommendations': return <AIRecommendations />;
-    case 'attendance-mgmt': return <AttendanceManagement />;
-    case 'assignment-mgmt': return <AssignmentManagement />;
-    case 'expense-mgmt': return <ExpenseManagement />;
-    case 'attendance': return <div className="max-w-2xl animate-fade-in"><AttendanceCard /></div>;
-    case 'assignments': return <div className="max-w-2xl animate-fade-in"><AssignmentsCard /></div>;
-    case 'planner': return <div className="max-w-2xl animate-fade-in"><StudyPlanner /></div>;
-    case 'expenses': return <div className="max-w-xl animate-fade-in"><ExpenseCard /></div>;
-    case 'analytics': return <div className="max-w-xl animate-fade-in"><AnalyticsCard /></div>;
-    case 'notifications': return <div className="max-w-xl animate-fade-in"><NotificationsCard /></div>;
+    case 'analytics': return <StudentAnalytics />;
+    case 'ai-insights': return <AIRecommendations />;
+    case 'attendance-management': return <AttendanceManagement />;
+    case 'assignment-management': return <AssignmentManagement />;
+    case 'expense-management': return <ExpenseManagement />;
+    case 'attendance': return <div className="p-6"><AttendanceCard /></div>;
+    case 'assignments': return <div className="p-6"><AssignmentsCard /></div>;
+    case 'study-planner': return <div className="p-6"><StudyPlanner /></div>;
+    case 'notifications': return <div className="p-6"><NotificationsCard /></div>;
     default: return <OverviewSection />;
   }
 }
 
-export default function Dashboard({ onNavigate }: DashboardProps) {
+function FacultyContent({ section }: { section: string }) {
+  switch (section) {
+    case 'overview':
+    case 'my-courses':
+    case 'students':
+    case 'assignments':
+    case 'attendance':
+    case 'analytics':
+      return <FacultyOverview />;
+    case 'notifications':
+      return <div className="p-6"><NotificationsCard /></div>;
+    default:
+      return <FacultyOverview />;
+  }
+}
+
+function AdminContent({ section }: { section: string }) {
+  switch (section) {
+    case 'overview':
+    case 'users':
+    case 'departments':
+    case 'courses':
+    case 'analytics':
+    case 'reports':
+      return <AdminOverview />;
+    case 'notifications':
+      return <div className="p-6"><NotificationsCard /></div>;
+    default:
+      return <AdminOverview />;
+  }
+}
+
+export default function Dashboard() {
+  const { role } = useAuthContext();
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleSectionChange = (section: string) => setActiveSection(section);
+
+  const renderContent = () => {
+    if (activeSection === 'profile') {
+      return <UserProfilePage />;
+    }
+    if (role === 'faculty') return <FacultyContent section={activeSection} />;
+    if (role === 'admin') return <AdminContent section={activeSection} />;
+    return <StudentContent section={activeSection} />;
+  };
 
   return (
-    <div className="min-h-screen bg-mesh flex flex-col">
-      <div className="flex flex-1">
-        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(prev => !prev)} onNavigate={onNavigate} unreadCount={unreadCount} />
-        <main className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-60'}`}>
-          <TopBar onSectionChange={setActiveSection} />
-          <div className="flex-1 overflow-auto">
-            <div className="p-8 md:p-10 lg:p-12">
-              <div className="flex items-center gap-2 mb-8">
-                <span className="text-blue-300/30 dark:text-blue-300/30 text-sm">Dashboard</span>
-                {activeSection !== 'overview' && (<><span className="text-blue-300/20 dark:text-blue-300/20 text-sm">/</span><span className="text-blue-300/60 dark:text-blue-300/60 text-sm font-medium">{sectionTitles[activeSection]}</span></>)}
-              </div>
-              <SectionContent section={activeSection} />
-            </div>
-          </div>
-        </main>
-      </div>
-      <Footer />
+    <div className="min-h-screen bg-mesh">
+      <Sidebar
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(v => !v)}
+      />
+      <TopBar
+        sidebarCollapsed={sidebarCollapsed}
+        onProfileClick={() => setActiveSection('profile')}
+      />
+      <main
+        className={`transition-all duration-300 pt-16 min-h-screen ${sidebarCollapsed ? 'ml-16' : 'ml-60'}`}
+      >
+        <div className="min-h-[calc(100vh-4rem)]">
+          {renderContent()}
+        </div>
+        <Footer />
+      </main>
     </div>
   );
 }
