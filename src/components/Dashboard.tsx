@@ -18,6 +18,7 @@ import NotificationsCard from './dashboard/NotificationsCard';
 import StudyPlanner from './dashboard/StudyPlanner';
 
 // Faculty sections
+import FacultyDashboard from './dashboard/faculty/FacultyDashboard';
 import FacultyOverview from './dashboard/faculty/FacultyOverview';
 
 // Admin sections
@@ -45,6 +46,8 @@ function StudentContent({ section }: { section: string }) {
 
 function FacultyContent({ section }: { section: string }) {
   switch (section) {
+    case 'dashboard':
+      return <FacultyDashboard />;
     case 'overview':
     case 'my-courses':
     case 'students':
@@ -55,7 +58,7 @@ function FacultyContent({ section }: { section: string }) {
     case 'notifications':
       return <div className="p-6"><NotificationsCard /></div>;
     default:
-      return <FacultyOverview />;
+      return <FacultyDashboard />;
   }
 }
 

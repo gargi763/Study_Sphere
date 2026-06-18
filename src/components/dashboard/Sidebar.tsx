@@ -34,7 +34,7 @@ const STUDENT_NAV: NavItem[] = [
 ];
 
 const FACULTY_NAV: NavItem[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'my-courses', label: 'My Courses', icon: BookOpen },
   { id: 'students', label: 'Students', icon: GraduationCap },
   { id: 'assignments', label: 'Assignments', icon: ClipboardList },
