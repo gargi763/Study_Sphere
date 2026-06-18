@@ -6,6 +6,7 @@ import { useAuthContext } from '../context/AuthContext';
 
 // Student sections
 import OverviewSection from './dashboard/OverviewSection';
+import StudentProfilePage from './dashboard/StudentProfilePage';
 import StudentAnalytics from './dashboard/StudentAnalytics';
 import AIRecommendations from './dashboard/AIRecommendations';
 import AttendanceManagement from './dashboard/AttendanceManagement';
@@ -28,6 +29,7 @@ import UserProfilePage from './dashboard/UserProfilePage';
 function StudentContent({ section }: { section: string }) {
   switch (section) {
     case 'overview': return <OverviewSection />;
+    case 'student-profile': return <StudentProfilePage />;
     case 'analytics': return <StudentAnalytics />;
     case 'ai-insights': return <AIRecommendations />;
     case 'attendance-management': return <AttendanceManagement />;

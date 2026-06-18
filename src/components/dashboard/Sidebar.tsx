@@ -23,6 +23,7 @@ interface NavItem {
 
 const STUDENT_NAV: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'student-profile', label: 'Student Profile', icon: GraduationCap },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'ai-insights', label: 'AI Insights', icon: Brain },
   { id: 'attendance-management', label: 'Attendance', icon: CalendarCheck },
