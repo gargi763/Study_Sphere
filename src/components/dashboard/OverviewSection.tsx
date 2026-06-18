@@ -1,64 +1,20 @@
-import { useEffect, useState } from 'react';
 import AttendanceCard from './AttendanceCard';
 import AssignmentsCard from './AssignmentsCard';
 import NotificationsCard from './NotificationsCard';
 import ExpenseCard from './ExpenseCard';
 import StudyPlanner from './StudyPlanner';
 import AnalyticsCard from './AnalyticsCard';
-import { useAuthContext } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
-import { useAttendance, useSubmissions } from '../../hooks/useData';
+import { student, productivityData, attendanceData, assignments } from '../../data/studentData';
 import { BookOpen, Target, Zap, Award } from 'lucide-react';
-import type { Tables } from '../../types/database';
 
-type Assignment = Tables<'assignments'>;
+const quickStats = [
+  { label: 'GPA', value: student.gpa.toString(), sub: 'Current semester', icon: Award, color: 'from-blue-600/30 to-blue-500/20', iconColor: 'text-blue-400', trend: '+0.2', trendUp: true },
+  { label: 'Attendance', value: `${attendanceData.overall}%`, sub: 'Overall', icon: Target, color: 'from-green-600/30 to-green-500/20', iconColor: 'text-green-400', trend: '+2.3%', trendUp: true },
+  { label: 'Study Streak', value: `${productivityData.streakDays}d`, sub: 'Consecutive days', icon: Zap, color: 'from-orange-600/30 to-orange-500/20', iconColor: 'text-orange-400', trend: 'Keep it up!', trendUp: true },
+  { label: 'Assignments', value: `${assignments.filter(a => a.status !== 'completed').length}`, sub: 'Pending', icon: BookOpen, color: 'from-red-600/30 to-red-500/20', iconColor: 'text-red-400', trend: `${assignments.filter(a => a.status === 'completed').length} done`, trendUp: true },
+];
 
 export default function OverviewSection() {
-  const { profile, studentProfile, user } = useAuthContext();
-  const { getOverallPercentage } = useAttendance(user?.id);
-  const { submissions } = useSubmissions(user?.id);
-
-  const [, setAssignments] = useState<Assignment[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('assignments')
-          .select('*')
-          .order('due_date', { ascending: true });
-        if (error) throw error;
-        setAssignments(data || []);
-      } catch (err) {
-        console.error('Failed to fetch assignments:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [user?.id]);
-
-  const pendingCount = submissions.filter(s => s.status === 'pending' || s.status === 'submitted').length;
-  const completedCount = submissions.filter(s => s.status === 'graded').length;
-  const overallAttendance = getOverallPercentage();
-  const gpa = studentProfile?.gpa ?? 0;
-
-  const quickStats = [
-    { label: 'GPA', value: gpa.toFixed(1), sub: 'Current semester', icon: Award, color: 'from-blue-600/30 to-blue-500/20', iconColor: 'text-blue-400', trend: gpa >= 3.5 ? 'Excellent' : 'Good', trendUp: true },
-    { label: 'Attendance', value: `${overallAttendance}%`, sub: 'Overall', icon: Target, color: 'from-green-600/30 to-green-500/20', iconColor: 'text-green-400', trend: overallAttendance >= 85 ? '+2.3%' : `${overallAttendance}%`, trendUp: overallAttendance >= 75 },
-    { label: 'Study Streak', value: '14d', sub: 'Consecutive days', icon: Zap, color: 'from-orange-600/30 to-orange-500/20', iconColor: 'text-orange-400', trend: 'Keep it up!', trendUp: true },
-    { label: 'Assignments', value: `${pendingCount}`, sub: 'Pending', icon: BookOpen, color: 'from-red-600/30 to-red-500/20', iconColor: 'text-red-400', trend: `${completedCount} done`, trendUp: true },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <span className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -75,10 +31,10 @@ export default function OverviewSection() {
       </div>
 
       <div className="glass-card rounded-2xl p-6 border transition-theme border-slate-300/20 dark:border-white/8 flex items-center gap-4 smooth-hover">
-        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shrink-0">{(profile?.full_name?.[0] ?? '?').toUpperCase()}</div>
+        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shrink-0">{student.avatar}</div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap"><h2 className="text-slate-900 dark:text-white font-semibold text-lg transition-colors">{profile?.full_name || 'Student'}</h2><span className="text-xs text-slate-600 dark:text-blue-300/50 glass rounded-lg px-3 py-1 transition-colors">{studentProfile?.year || 'Student'}</span></div>
-          <div className="flex items-center gap-4 mt-2 flex-wrap"><span className="text-slate-600 dark:text-blue-300/50 text-xs transition-colors">{studentProfile?.major || profile?.department || 'Undeclared'}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs transition-colors">{studentProfile?.university || 'University'}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs font-mono transition-colors">{studentProfile?.student_id || ''}</span></div>
+          <div className="flex items-center gap-3 flex-wrap"><h2 className="text-slate-900 dark:text-white font-semibold text-lg transition-colors">{student.name}</h2><span className="text-xs text-slate-600 dark:text-blue-300/50 glass rounded-lg px-3 py-1 transition-colors">{student.year}</span></div>
+          <div className="flex items-center gap-4 mt-2 flex-wrap"><span className="text-slate-600 dark:text-blue-300/50 text-xs transition-colors">{student.major}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs transition-colors">{student.university}</span><span className="text-slate-600 dark:text-blue-300/30 text-xs font-mono transition-colors">{student.id}</span></div>
         </div>
       </div>
 

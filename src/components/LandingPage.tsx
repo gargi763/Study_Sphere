@@ -5,9 +5,7 @@ import SmartCampusIntegration from './dashboard/SmartCampusIntegration';
 import Footer from './Footer';
 
 interface LandingPageProps {
-  onNavigate?: (page: 'landing' | 'login' | 'dashboard') => void;
-  onGetStarted?: () => void;
-  onLogin?: () => void;
+  onNavigate: (page: 'landing' | 'login' | 'dashboard') => void;
 }
 
 const features = [
@@ -47,14 +45,7 @@ const benefits = [
   { icon: Code, title: 'Smart Integration', desc: 'Syncs with your digital life' },
 ];
 
-export default function LandingPage({ onNavigate, onGetStarted, onLogin }: LandingPageProps) {
-  const navigate = (page: 'landing' | 'login' | 'dashboard') => {
-    if (page === 'login') {
-      onGetStarted?.();
-      onLogin?.();
-    }
-    onNavigate?.(page);
-  };
+export default function LandingPage({ onNavigate }: LandingPageProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [visibleStats, setVisibleStats] = useState(false);
@@ -95,9 +86,9 @@ export default function LandingPage({ onNavigate, onGetStarted, onLogin }: Landi
             <a href="#testimonials" className="text-sm text-slate-600 dark:text-blue-100/70 hover:text-slate-900 dark:hover:text-white transition-colors">Reviews</a>
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <button onClick={() => navigate('login')} className="text-sm text-slate-600 dark:text-blue-200 hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2">Sign In</button>
+            <button onClick={() => onNavigate('login')} className="text-sm text-slate-600 dark:text-blue-200 hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2">Sign In</button>
             <ThemeToggle />
-            <button onClick={() => navigate('login')} className="text-sm bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-5 py-2 rounded-xl transition-all duration-200 shadow-lg shadow-blue-900/30">Get Started</button>
+            <button onClick={() => onNavigate('login')} className="text-sm bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-5 py-2 rounded-xl transition-all duration-200 shadow-lg shadow-blue-900/30">Get Started</button>
           </div>
           <div className="md:hidden flex items-center gap-3">
             <ThemeToggle />
@@ -111,8 +102,8 @@ export default function LandingPage({ onNavigate, onGetStarted, onLogin }: Landi
             <a href="#features" className="text-slate-600 dark:text-blue-100/70 hover:text-slate-900 dark:hover:text-white transition-colors text-sm" onClick={() => setMobileMenuOpen(false)}>Features</a>
             <a href="#sdg" className="text-slate-600 dark:text-blue-100/70 hover:text-slate-900 dark:hover:text-white transition-colors text-sm" onClick={() => setMobileMenuOpen(false)}>Impact</a>
             <a href="#testimonials" className="text-slate-600 dark:text-blue-100/70 hover:text-slate-900 dark:hover:text-white transition-colors text-sm" onClick={() => setMobileMenuOpen(false)}>Reviews</a>
-            <button onClick={() => navigate('login')} className="text-sm text-slate-600 dark:text-blue-200 text-left">Sign In</button>
-            <button onClick={() => navigate('login')} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-xl w-fit">Get Started</button>
+            <button onClick={() => onNavigate('login')} className="text-sm text-slate-600 dark:text-blue-200 text-left">Sign In</button>
+            <button onClick={() => onNavigate('login')} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-xl w-fit">Get Started</button>
           </div>
         )}
       </nav>
@@ -131,10 +122,10 @@ export default function LandingPage({ onNavigate, onGetStarted, onLogin }: Landi
             StudySphere brings together attendance tracking, assignment management, study planning, and expense monitoring — everything a student needs to excel.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onClick={() => navigate('login')} className="group flex items-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 shadow-xl shadow-blue-900/40 hover:shadow-blue-900/60 hover:scale-105">
+            <button onClick={() => onNavigate('dashboard')} className="group flex items-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 shadow-xl shadow-blue-900/40 hover:shadow-blue-900/60 hover:scale-105">
               View Dashboard Demo <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </button>
-            <button onClick={() => navigate('login')} className="flex items-center gap-3 glass hover:bg-slate-100 dark:hover:bg-white/10 text-slate-900 dark:text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 border transition-theme border-slate-300/30 dark:border-white/10">
+            <button onClick={() => onNavigate('login')} className="flex items-center gap-3 glass hover:bg-slate-100 dark:hover:bg-white/10 text-slate-900 dark:text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 border transition-theme border-slate-300/30 dark:border-white/10">
               Sign In <ChevronRight size={18} />
             </button>
           </div>
@@ -322,8 +313,8 @@ export default function LandingPage({ onNavigate, onGetStarted, onLogin }: Landi
             <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4 transition-colors">Ready to Excel?</h2>
             <p className="text-slate-600 dark:text-blue-200/60 text-lg mb-8 transition-colors">Join StudySphere today and transform the way you study.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button onClick={() => navigate('login')} className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 shadow-lg shadow-blue-900/40 hover:scale-105">Start Free Today <ArrowRight size={18} /></button>
-              <button onClick={() => navigate('login')} className="flex items-center justify-center gap-2 glass hover:bg-slate-100 dark:hover:bg-white/10 text-slate-900 dark:text-white px-8 py-4 rounded-2xl font-semibold transition-all border transition-theme border-slate-300/30 dark:border-white/10"><Award size={18} className="text-yellow-400" />Try Demo</button>
+              <button onClick={() => onNavigate('login')} className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 shadow-lg shadow-blue-900/40 hover:scale-105">Start Free Today <ArrowRight size={18} /></button>
+              <button onClick={() => onNavigate('dashboard')} className="flex items-center justify-center gap-2 glass hover:bg-slate-100 dark:hover:bg-white/10 text-slate-900 dark:text-white px-8 py-4 rounded-2xl font-semibold transition-all border transition-theme border-slate-300/30 dark:border-white/10"><Award size={18} className="text-yellow-400" />Try Demo</button>
             </div>
           </div>
         </div>
