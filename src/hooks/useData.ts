@@ -30,9 +30,12 @@ export function useAuth() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role } },
+      options: {
+        data: { full_name: fullName, role },
+      },
     });
     if (error) throw error;
+    // Ensure profile row exists (trigger may have fired, but also insert here as fallback)
     if (data.user) {
       await supabase.from('user_profiles').upsert({
         id: data.user.id,
@@ -201,35 +204,10 @@ export function useAssignments(userId?: string) {
   return { assignments, submissions, loading, addAssignment, updateAssignment, deleteAssignment, submitAssignment, refetch: fetchAll };
 }
 
-// ─── Attendance (real-time) ───────────────────────────────────────────────────
-
-export interface AttendanceRecord {
-  id: string;
-  student_id: string;
-  subject: string;
-  date: string;
-  check_in_time: string | null;
-  check_out_time: string | null;
-  status: 'present' | 'absent' | 'late' | 'excused';
-  rfid_tag: string | null;
-  notes: string;
-  marked_by: 'self' | 'faculty' | 'rfid';
-  faculty_id: string | null;
-  created_at: string;
-}
-
-export interface SubjectStat {
-  subject: string;
-  present: number;
-  absent: number;
-  late: number;
-  excused: number;
-  total: number;
-  percentage: number;
-}
+// ─── Attendance ───────────────────────────────────────────────────────────────
 
 export function useAttendance(userId?: string) {
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRecords = useCallback(async () => {
@@ -238,192 +216,42 @@ export function useAttendance(userId?: string) {
       .from('attendance_records')
       .select('*')
       .eq('student_id', userId)
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false });
-    setRecords((data ?? []) as AttendanceRecord[]);
+      .order('date', { ascending: false });
+    setRecords(data ?? []);
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
-  // Real-time subscription
-  useEffect(() => {
-    if (!userId) return;
-
-    const channel = supabase
-      .channel(`attendance:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'attendance_records',
-          filter: `student_id=eq.${userId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setRecords(prev => {
-              const exists = prev.some(r => r.id === (payload.new as AttendanceRecord).id);
-              if (exists) return prev;
-              return [payload.new as AttendanceRecord, ...prev];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setRecords(prev =>
-              prev.map(r => r.id === (payload.new as AttendanceRecord).id ? payload.new as AttendanceRecord : r)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setRecords(prev => prev.filter(r => r.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
-
-  // Upsert — inserts or updates by (student_id, subject, date)
-  const upsertRecord = async (record: {
-    student_id: string;
-    subject: string;
-    date: string;
-    status: AttendanceRecord['status'];
-    check_in_time?: string | null;
-    rfid_tag?: string | null;
-    marked_by?: AttendanceRecord['marked_by'];
-    faculty_id?: string | null;
-    notes?: string;
-  }) => {
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .upsert(record, { onConflict: 'student_id,subject,date' })
-      .select()
-      .single();
+  const addRecord = async (record: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('attendance_records').insert(record).select().single();
     if (error) throw error;
-    return data as AttendanceRecord;
+    setRecords(prev => [data, ...prev]);
+    return data;
   };
 
-  const deleteRecord = async (id: string) => {
-    const { error } = await supabase.from('attendance_records').delete().eq('id', id);
-    if (error) throw error;
-    setRecords(prev => prev.filter(r => r.id !== id));
-  };
-
-  const getSubjectStats = (): SubjectStat[] => {
-    const map: Record<string, SubjectStat> = {};
+  const getSubjectStats = () => {
+    const map: Record<string, { present: number; total: number }> = {};
     records.forEach(r => {
-      if (!map[r.subject]) {
-        map[r.subject] = { subject: r.subject, present: 0, absent: 0, late: 0, excused: 0, total: 0, percentage: 0 };
-      }
-      const s = map[r.subject];
-      s.total++;
-      if (r.status === 'present') s.present++;
-      else if (r.status === 'absent') s.absent++;
-      else if (r.status === 'late') s.late++;
-      else if (r.status === 'excused') s.excused++;
-      // present + late count as attended
-      s.percentage = s.total > 0 ? Math.round(((s.present + s.late) / s.total) * 100) : 0;
+      if (!map[r.subject]) map[r.subject] = { present: 0, total: 0 };
+      map[r.subject].total++;
+      if (r.status === 'present') map[r.subject].present++;
     });
-    return Object.values(map);
+    return Object.entries(map).map(([subject, s]) => ({
+      subject,
+      percentage: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0,
+      present: s.present,
+      total: s.total,
+    }));
   };
 
   const getOverallPercentage = () => {
     if (!records.length) return 0;
-    const attended = records.filter(r => r.status === 'present' || r.status === 'late').length;
-    return Math.round((attended / records.length) * 100);
+    const present = records.filter(r => r.status === 'present').length;
+    return Math.round((present / records.length) * 100);
   };
 
-  const getTodayRecords = () => {
-    const today = new Date().toISOString().split('T')[0];
-    return records.filter(r => r.date === today);
-  };
-
-  return {
-    records,
-    loading,
-    upsertRecord,
-    deleteRecord,
-    getSubjectStats,
-    getOverallPercentage,
-    getTodayRecords,
-    refetch: fetchRecords,
-  };
-}
-
-// ─── RFID Events (real-time) ──────────────────────────────────────────────────
-
-export interface RfidEvent {
-  id: string;
-  card_uid: string;
-  student_id: string | null;
-  subject: string;
-  scanned_at: string;
-  status: 'pending' | 'matched' | 'unrecognized';
-  created_at: string;
-}
-
-export function useRfidEvents(userId?: string) {
-  const [events, setEvents] = useState<RfidEvent[]>([]);
-  const [scanning, setScanning] = useState(false);
-
-  useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from('rfid_events')
-      .select('*')
-      .eq('student_id', userId)
-      .order('scanned_at', { ascending: false })
-      .limit(20)
-      .then(({ data }) => setEvents((data ?? []) as RfidEvent[]));
-  }, [userId]);
-
-  // Real-time subscription for RFID events
-  useEffect(() => {
-    if (!userId) return;
-    const channel = supabase
-      .channel(`rfid:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'rfid_events',
-          filter: `student_id=eq.${userId}`,
-        },
-        (payload) => {
-          setEvents(prev => [payload.new as RfidEvent, ...prev.slice(0, 19)]);
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
-
-  const simulateScan = async (userId: string, subject: string): Promise<RfidEvent> => {
-    setScanning(true);
-    const cardUid = `RFID-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-
-    await new Promise(r => setTimeout(r, 1800));
-
-    const { data, error } = await supabase
-      .from('rfid_events')
-      .insert({
-        card_uid: cardUid,
-        student_id: userId,
-        subject,
-        scanned_at: new Date().toISOString(),
-        status: 'matched',
-      })
-      .select()
-      .single();
-
-    setScanning(false);
-    if (error) throw error;
-    return data as RfidEvent;
-  };
-
-  return { events, scanning, simulateScan };
+  return { records, loading, addRecord, getSubjectStats, getOverallPercentage, refetch: fetchRecords };
 }
 
 // ─── Expenses ─────────────────────────────────────────────────────────────────
@@ -600,7 +428,9 @@ export function useStudyPlans(userId?: string) {
     setPlans(prev => prev.filter(p => p.id !== id));
   };
 
-  const toggleCompleted = async (id: string, completed: boolean) => updatePlan(id, { completed });
+  const toggleCompleted = async (id: string, completed: boolean) => {
+    return updatePlan(id, { completed });
+  };
 
   return { plans, loading, addPlan, updatePlan, deletePlan, toggleCompleted };
 }
