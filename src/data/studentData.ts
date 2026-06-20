@@ -1,5 +1,5 @@
 export const student = {
-  name: 'Amey Gapate',
+  name: 'Amey Krishna Gapate',
   email: 'amey.gapate@university.edu',
   id: 'STU-2024-0847',
   major: 'Computer Science',
